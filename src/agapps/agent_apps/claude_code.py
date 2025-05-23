@@ -74,7 +74,7 @@ class ClaudeCode(AgentApp):
                 full_command = f"{command_executable} {' '.join(args)}".strip()
             elif isinstance(args, str) and args: # Handle case where args might be a single string
                  full_command = f"{command_executable} {args}".strip()
-            
+
             if command_executable:  # Only add if there's a base command executable
                 result.append(MCP(name=name, command=full_command, envs=env_vars))
         return result
@@ -94,7 +94,7 @@ class ClaudeCode(AgentApp):
 
         Global memory is defined in:
         - ~/.claude/CLAUDE.md (User memory - personal preferences for all projects)
-        
+
         Note: ~/.claude/settings.json is a settings file, not a rules file
         """
         rules = []
@@ -110,9 +110,9 @@ class ClaudeCode(AgentApp):
         Get workspace-level rules for Claude Code.
 
         Workspace rules/memory can be defined in:
-        - CLAUDE.md (Project memory - team-shared instructions)
-        - CLAUDE.local.md (Project memory local - personal project-specific preferences, deprecated)
-        
+        - **/CLAUDE.md (Project memory - team-shared instructions, searched recursively)
+        - **/CLAUDE.local.md (Project memory local - personal project-specific preferences, searched recursively)
+
         Settings files (not rules):
         - .claude/settings.json (shared settings)
         - .claude/settings.local.json (local project settings)
@@ -123,14 +123,12 @@ class ClaudeCode(AgentApp):
         if isinstance(workspace, str):
             workspace = Path(workspace)
 
-        # Check for Project memory (team-shared instructions)
-        project_memory_path = workspace / "CLAUDE.md"
-        if project_memory_path.exists():
-            rules.append(Rule(pattern=project_memory_path))
+        # Check for Project memory (team-shared instructions) recursively
+        for claude_md_path in workspace.glob("**/CLAUDE.md"):
+            rules.append(Rule(pattern=claude_md_path))
 
-        # Check for Project memory local (personal project-specific preferences, deprecated)
-        project_memory_local_path = workspace / "CLAUDE.local.md"
-        if project_memory_local_path.exists():
-            rules.append(Rule(pattern=project_memory_local_path))
+        # Check for Project memory local (personal project-specific preferences, deprecated) recursively
+        for claude_local_md_path in workspace.glob("**/CLAUDE.local.md"):
+            rules.append(Rule(pattern=claude_local_md_path))
 
-        return rules 
+        return rules
