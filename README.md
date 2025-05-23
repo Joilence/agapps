@@ -37,6 +37,7 @@ $ agapps
 │ Claude Desktop   │ No           │ No              │ Yes         │
 │ OpenAI Codex CLI │ Yes          │ Yes             │ No          │
 │ Cursor           │ No           │ Yes             │ Yes         │
+│ GitHub Copilot   │ No           │ Yes             │ No          │
 │ Windsurf         │ Yes          │ Yes             │ Yes         │
 └──────────────────┴──────────────┴─────────────────┴─────────────┘
 Use 'agapps mcps' to view MCP configurations.
@@ -88,6 +89,10 @@ Use 'agapps view <path>' to view combined MCP and Rule info for a workspace.
       No global rules found.
       Workspace rules for .:
       • .cursor/rules/project-rules.mdc (113 words, 22 lines)
+    GitHub Copilot Rules:
+      No global rules found.
+      Workspace rules for .:
+      • .github/copilot-instructions.md (260 words, 50 lines)
     # ... (other rules truncated for brevity) ...
   ```
 
@@ -279,6 +284,12 @@ The `agapps` CLI aggregates this information and presents it in a user-friendly 
   - **Workspace Rules**:
     - `.cursorrules` (deprecated, single file)
     - `.cursor/rules/*.md` (multi-file)
+- **GitHub Copilot**
+  - **MCP Config**: Not supported.
+  - **Global Rules**: Not supported.
+  - **Workspace Rules**:
+    - `.github/copilot-instructions.md` (repository custom instructions)
+    - `.github/prompts/*.prompt.md` (prompt files for VS Code)
 - **Windsurf**
   - **MCP Config**:
     - `~/.codeium/windsurf/mcp_config.json`
@@ -347,6 +358,10 @@ To add support for a new agent app:
    ```
 
 3. **Implement the methods** to locate and parse its specific configuration files for MCPs and rules.
-4. **Register the new app** in `src/agapps/cli.py`:
-   - Import your new class: `from agapps.agent_apps.my_new_app import MyNewApp`
-   - Add it to the `APPS` dictionary: `APPS["my-new-app"] = MyNewApp`
+4. **Register the new app** in both `src/agapps/agent_apps/__init__.py` and `src/agapps/cli.py`:
+   - In `src/agapps/agent_apps/__init__.py`:
+     - Import your new class: `from agapps.agent_apps.my_new_app import MyNewApp`
+     - Add it to the `__all__` list: `__all__ = [..., "MyNewApp", ...]`
+   - In `src/agapps/cli.py`:
+     - Import your new class: `from agapps.agent_apps.my_new_app import MyNewApp`
+     - Add it to the `APPS` dictionary: `APPS["my-new-app"] = MyNewApp`
