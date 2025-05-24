@@ -1,6 +1,6 @@
 # agapps
 
-A command-line tool for viewing (in the future perhaps managing) AI agent app configurations (MCPs, rules, workspace rules).
+A command-line tool for viewing (in the future perhaps managing) AI agent app configurations (MCPs, rules both global and local).
 
 ## Installation
 
