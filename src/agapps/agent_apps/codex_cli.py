@@ -1,9 +1,10 @@
-import yaml
+import os
 import json
+import yaml
 from pathlib import Path
 from typing import List, Union, Dict
 
-from agapps.schema import AgentApp, MCP, Rule
+from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, Prompt, PromptConfig
 
 
 class CodexCli(AgentApp):
@@ -25,51 +26,43 @@ class CodexCli(AgentApp):
                             return yaml.safe_load(f) or {}
                         else:
                             return json.load(f)
-                except (yaml.YAMLError, json.JSONDecodeError, IOError):
+                except (json.JSONDecodeError, yaml.YAMLError, IOError):
                     pass
         return {}
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
         """
         Get MCP configurations from Codex CLI.
 
-        Codex CLI is an MCP client only; it does not load external servers.
+        Note: Codex CLI doesn't have built-in MCP support.
         """
-        return []
+        return None
 
-    def get_mcp_config_paths(self) -> List[Path]:
-        """Codex CLI does not load external MCP servers from config files."""
-        return []
-
-    def get_global_rules(self) -> List[Rule]:
+    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
         """
-        Get global rules for Codex CLI.
+        Get rule configurations for Codex CLI.
 
-        Global rules are defined in ~/.codex/AGENTS.md file.
+        Rules include:
+        - Global: ~/.codex/AGENTS.md
         """
-        rules = []
-
+        configs = []
+        
+        # Global rules
         if self.instructions_path.exists():
-            rules.append(Rule(pattern=self.instructions_path))
+            configs.append(RuleConfig(
+                path=self.instructions_path,
+                type="global",
+                rules=[Rule(pattern=self.instructions_path)]
+            ))
+        
+        # Codex CLI doesn't support workspace-specific rules
+        
+        return configs
 
-        return rules
-
-    def get_workspace_rules(self, workspace: Union[Path, str]) -> List[Rule]:
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
         """
-        Get workspace-level rules for Codex CLI.
-
-        Workspace rules are defined in AGENTS.md in the project root
-        or current working directory.
+        Get prompt configurations for Codex CLI.
+        
+        Codex CLI doesn't have a built-in prompt/command system.
         """
-        rules = []
-
-        # Convert workspace to Path if it's a string
-        if isinstance(workspace, str):
-            workspace = Path(workspace)
-
-        # Check for AGENTS.md in project root / current workspace context
-        agents_md = workspace / "AGENTS.md"
-        if agents_md.exists():
-            rules.append(Rule(pattern=agents_md))
-
-        return rules 
+        return None

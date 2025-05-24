@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Union, Dict
 
-from agapps.schema import AgentApp, MCP, Rule # Updated import
+from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, Prompt, PromptConfig
 
 
 class Cursor(AgentApp):
@@ -11,96 +11,99 @@ class Cursor(AgentApp):
         self.global_rules_path = Path.home() / ".cursor" / "global_rules.md"
         self.mcp_config_path = Path.home() / ".cursor" / "mcp.json"
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
         """
         Get MCP configurations from Cursor.
 
         Cursor's MCPs are defined in ~/.cursor/mcp.json with "mcpServers" object
         where each key is the server name and value contains command, args, env.
         """
-        result = []
-
-        if not self.mcp_config_path.exists():
-            return result
-
-        try:
-            with open(self.mcp_config_path, "r") as f:
-                config = json.load(f)
-
-            # Extract MCP servers from config
-            if "mcpServers" in config and isinstance(config["mcpServers"], dict):
-                for server_name, server_config in config["mcpServers"].items():
-                    if isinstance(server_config, dict):
-                        command = server_config.get("command", "")
-                        args = server_config.get("args", [])
-
-                        # For SSE servers, there's usually a URL instead
-                        if not command and "url" in server_config:
-                            command = f"SSE Server: {server_config['url']}"
-                        elif args:
-                            # Combine command and args for display
-                            command = f"{command} {' '.join(args)}"
-
-                        # Extract environment variables if available
-                        envs = server_config.get("env", {})
-
-                        result.append(MCP(name=server_name, command=command, envs=envs))
-        except (json.JSONDecodeError, IOError):
-            # Failed to parse config
-            pass
-
-        return result
-
-    def get_mcp_config_paths(self) -> List[Path]:
-        """Get the path to the Cursor MCP config file if it exists and contains MCPs."""
+        configs = []
+        
         if self.mcp_config_path.exists():
             try:
                 with open(self.mcp_config_path, "r") as f:
                     config = json.load(f)
-                if config.get("mcpServers"):
-                    return [self.mcp_config_path]
+                
+                servers = []
+                mcp_servers = config.get("mcpServers", {})
+                
+                for server_name, server_details in mcp_servers.items():
+                    if not isinstance(server_details, dict):
+                        continue
+                    
+                    command = server_details.get("command", "")
+                    args = server_details.get("args", [])
+                    env_vars = server_details.get("env", {})
+                    
+                    # Build full command
+                    if args:
+                        if isinstance(args, list):
+                            full_command = f"{command} {' '.join(args)}".strip()
+                        else:
+                            full_command = f"{command} {args}".strip()
+                    else:
+                        full_command = command
+                    
+                    if command:
+                        servers.append(MCP(name=server_name, command=full_command, envs=env_vars))
+                
+                if servers:
+                    configs.append(MCPConfig(path=self.mcp_config_path, type="global", servers=servers))
+                    
             except (json.JSONDecodeError, IOError):
                 pass
-        return []
+        
+        return configs
 
-    def get_global_rules(self) -> List[Rule]:
+    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
         """
-        Get global rules for Cursor.
+        Get rule configurations for Cursor.
 
-        Global rules are stored in ~/.cursor/global_rules.md.
+        Rules include:
+        - Global: ~/.cursor/global_rules.md
+        - Workspace: .cursorrules and .cursorrules.local files
         """
-        rules = []
-
+        configs = []
+        
+        # Global rules
         if self.global_rules_path.exists():
-            rules.append(Rule(pattern=self.global_rules_path))
+            configs.append(RuleConfig(
+                path=self.global_rules_path,
+                type="global",
+                rules=[Rule(pattern=self.global_rules_path)]
+            ))
+        
+        # Workspace rules
+        if workspace:
+            if isinstance(workspace, str):
+                workspace = Path(workspace)
+            
+            workspace_rules = []
+            
+            # Check for .cursorrules
+            cursorrules_path = workspace / ".cursorrules"
+            if cursorrules_path.exists():
+                workspace_rules.append(Rule(pattern=cursorrules_path))
+            
+            # Check for .cursorrules.local
+            cursorrules_local_path = workspace / ".cursorrules.local"
+            if cursorrules_local_path.exists():
+                workspace_rules.append(Rule(pattern=cursorrules_local_path))
+            
+            if workspace_rules:
+                configs.append(RuleConfig(
+                    path=workspace,
+                    type="workspace",
+                    rules=workspace_rules
+                ))
+        
+        return configs
 
-        return rules
-
-    def get_workspace_rules(self, workspace: Union[Path, str]) -> List[Rule]:
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
         """
-        Get workspace-level rules for Cursor.
-
-        Workspace rules can be defined in:
-        - .cursorrules (single file - legacy)
-        - .cursor/rules/*.md (multi-file rules)
+        Get prompt configurations for Cursor.
+        
+        Cursor doesn't have a built-in prompt/command system like Claude Code.
         """
-        rules = []
-
-        # Convert workspace to Path if it's a string
-        if isinstance(workspace, str):
-            workspace = Path(workspace)
-
-        # Check for legacy .cursorrules file
-        legacy_rules = workspace / ".cursorrules"
-        if legacy_rules.exists():
-            rules.append(Rule(pattern=legacy_rules))
-
-        # Check for .cursor/rules directory with .md files
-        rules_dir = workspace / ".cursor" / "rules"
-        if rules_dir.exists() and rules_dir.is_dir():
-            # Add all .md and .mdc files in the rules directory
-            for rule_file in rules_dir.glob("*.md*"):
-                if rule_file.exists():
-                    rules.append(Rule(pattern=rule_file))
-
-        return rules 
+        return None

@@ -64,18 +64,13 @@ class AgentApp(ABC):
         self.name = name
 
     @abstractmethod
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
         pass
 
     @abstractmethod
-    def get_mcp_config_paths(self) -> List[Path]:
-        """Get the list of file paths from which MCP configurations are loaded."""
+    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
         pass
 
     @abstractmethod
-    def get_global_rules(self) -> List[Rule]:
-        pass
-
-    @abstractmethod
-    def get_workspace_rules(self, workspace: Union[Path, str]) -> List[Rule]:
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
         pass

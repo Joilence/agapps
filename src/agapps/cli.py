@@ -162,36 +162,51 @@ def _render_mcp_info(
 
     for app_name_iter, app_class_iter in target_apps_to_display.items():
         app_instance_iter = app_class_iter()
-        mcps_list_iter = app_instance_iter.get_mcps(workspace=for_workspace_path)
-        config_paths_iter = app_instance_iter.get_mcp_config_paths()
+        mcp_configs = app_instance_iter.get_mcps(workspace=for_workspace_path)
         
-        # Also get workspace-specific MCP config paths if available
-        if for_workspace_path and hasattr(app_instance_iter, 'get_workspace_mcp_config_paths'):
-            workspace_config_paths = app_instance_iter.get_workspace_mcp_config_paths(for_workspace_path)
-            if workspace_config_paths:
-                config_paths_iter = list(config_paths_iter) + workspace_config_paths if config_paths_iter else workspace_config_paths
-
-        if mcps_list_iter:
+        all_mcps = []
+        all_config_paths = []
+        
+        if mcp_configs is not None:
+            for config in mcp_configs:
+                all_mcps.extend(config.servers)
+                all_config_paths.append(config.path)
+        
+        if all_mcps:
             any_mcps_found_for_any_target_app = True
-            gathered_app_mcps[app_instance_iter.name] = mcps_list_iter
-            gathered_app_mcp_counts[app_instance_iter.name] = len(mcps_list_iter)
-            if config_paths_iter:
-                gathered_app_mcp_config_paths[app_instance_iter.name] = config_paths_iter
+            gathered_app_mcps[app_instance_iter.name] = all_mcps
+            gathered_app_mcp_counts[app_instance_iter.name] = len(all_mcps)
+            if all_config_paths:
+                gathered_app_mcp_config_paths[app_instance_iter.name] = all_config_paths
         else:
-             gathered_app_mcp_counts[app_instance_iter.name] = 0
+            gathered_app_mcp_counts[app_instance_iter.name] = 0
     
     if not any_mcps_found_for_any_target_app:
-        if for_workspace_path:
-            app_name_msg_part = f" for app '{app_filter}'" if app_filter else ""
-            workspace_msg_part = f" in {for_workspace_path}" if for_workspace_path else ""
-            console_obj.print(f"\n[yellow]No MCP configurations found{app_name_msg_part}{workspace_msg_part}.[/yellow]")
-            return
-        else:
+        # Check if it's because apps don't support MCPs
+        apps_checked = 0
+        apps_no_support = 0
+        for app_name, app_class in target_apps_to_display.items():
+            app_instance = app_class()
+            apps_checked += 1
+            if app_instance.get_mcps(workspace=for_workspace_path) is None:
+                apps_no_support += 1
+        
+        if apps_checked > 0 and apps_checked == apps_no_support:
             if app_filter:
-                console_obj.print(f"\n[yellow]No MCP configurations found for app '{app_filter}'.[/yellow]")
+                console_obj.print(f"\n[yellow]{app_filter} does not support MCP configurations.[/yellow]")
             else:
-                console_obj.print("\n[yellow]No MCP configurations found in any app.[/yellow]")
-            return
+                console_obj.print("\n[yellow]None of the selected apps support MCP configurations.[/yellow]")
+        else:
+            if for_workspace_path:
+                app_name_msg_part = f" for app '{app_filter}'" if app_filter else ""
+                workspace_msg_part = f" in {for_workspace_path}" if for_workspace_path else ""
+                console_obj.print(f"\n[yellow]No MCP configurations found{app_name_msg_part}{workspace_msg_part}.[/yellow]")
+            else:
+                if app_filter:
+                    console_obj.print(f"\n[yellow]No MCP configurations found for app '{app_filter}'.[/yellow]")
+                else:
+                    console_obj.print("\n[yellow]No MCP configurations found in any app.[/yellow]")
+        return
 
     if not for_workspace_path and not details:
         _display_mcp_summary_table(console_obj, target_apps_to_display, gathered_app_mcps, gathered_app_mcp_counts)
@@ -226,7 +241,22 @@ def _render_mcp_info(
              if not for_workspace_path: 
                 console_obj.print(f"[yellow]No detailed MCP information to display for the selection.[/yellow]")
              elif for_workspace_path and not any_mcps_found_for_any_target_app:
-                 console_obj.print(f"[yellow]No MCP configurations found for {app_filter if app_filter else 'any app'} in {for_workspace_path}.[/yellow]")
+                 # Check if it's because apps don't support MCPs
+                 apps_checked = 0
+                 apps_no_support = 0
+                 for app_name, app_class in target_apps_to_display.items():
+                     app_instance = app_class()
+                     apps_checked += 1
+                     if app_instance.get_mcps(workspace=for_workspace_path) is None:
+                         apps_no_support += 1
+                 
+                 if apps_checked > 0 and apps_checked == apps_no_support:
+                     if app_filter:
+                         console_obj.print(f"[yellow]{app_filter} does not support MCP configurations.[/yellow]")
+                     else:
+                         console_obj.print(f"[yellow]None of the selected apps support MCP configurations.[/yellow]")
+                 else:
+                     console_obj.print(f"[yellow]No MCP configurations found for {app_filter if app_filter else 'any app'} in {for_workspace_path}.[/yellow]")
 
 
 def _render_rules_info(
@@ -246,7 +276,8 @@ def _render_rules_info(
 
     actual_workspace_path: Optional[Path] = Path(workspace_path_str) if workspace_path_str else None
     found_any_rules_at_all = False
-    apps_without_any_rules = []
+    apps_no_support = []
+    apps_no_configs = []
 
     title = "Global Rules"
     if actual_workspace_path:
@@ -255,13 +286,25 @@ def _render_rules_info(
     
     for app_name_iter, app_class_iter in target_apps_to_display.items():
         app_instance_iter = app_class_iter()
-        global_rules_list = app_instance_iter.get_global_rules()
+        rule_configs = app_instance_iter.get_rules(workspace=actual_workspace_path)
+        
+        # Check if app supports rules
+        if rule_configs is None:
+            apps_no_support.append(app_instance_iter.name)
+            continue
+        
+        # Separate global and workspace rules
+        global_rules_list = []
         workspace_rules_list = []
-        if workspace_path_str:
-            workspace_rules_list = app_instance_iter.get_workspace_rules(actual_workspace_path)
+        
+        for config in rule_configs:
+            if config.type == "global":
+                global_rules_list.extend(config.rules)
+            elif config.type == "workspace":
+                workspace_rules_list.extend(config.rules)
 
         if not global_rules_list and (not workspace_path_str or not workspace_rules_list):
-            apps_without_any_rules.append(app_instance_iter.name)
+            apps_no_configs.append(app_instance_iter.name)
             continue
 
         found_any_rules_at_all = True
@@ -297,13 +340,121 @@ def _render_rules_info(
         else:
             console_obj.print("\n[yellow]No global rules found in any app.[/yellow]")
     
-    if apps_without_any_rules and found_any_rules_at_all:
-        conjunction = 'does' if len(apps_without_any_rules) == 1 else 'do'
-        apps_str = ', '.join(apps_without_any_rules)
+    # Show notes about apps without support or configs
+    if (apps_no_support or apps_no_configs) and found_any_rules_at_all:
+        # Apps that don't support rules
+        if apps_no_support:
+            conjunction = 'does' if len(apps_no_support) == 1 else 'do'
+            apps_str = ', '.join(apps_no_support)
+            console_obj.print(f"\n[dim]Note: {apps_str} {conjunction} not support rule configurations.[/dim]")
+        
+        # Apps that support rules but have none configured
+        if apps_no_configs:
+            conjunction = 'does' if len(apps_no_configs) == 1 else 'do'
+            apps_str = ', '.join(apps_no_configs)
+            if workspace_path_str:
+                console_obj.print(f"\n[yellow]Note: {apps_str} {conjunction} not have any rules configured for this workspace or globally.[/yellow]")
+            else:
+                console_obj.print(f"\n[yellow]Note: {apps_str} {conjunction} not have any global rules configured.[/yellow]")
+
+
+def _render_prompts_info(
+    console_obj: Console,
+    app_filter: Optional[str],
+    workspace_path_str: Optional[str]
+) -> None:
+    """Core logic to gather and display Prompt information."""
+    target_apps_to_display = APPS
+    if app_filter:
+        if app_filter not in APPS:
+            console_obj.print(f"[red]Error:[/red] App '{app_filter}' not found. Available apps: {', '.join(APPS.keys())}")
+            return
+        target_apps_to_display = {app_filter: APPS[app_filter]}
+        console_obj.print(f"[dim]Filtered by App: {app_filter}[/dim]")
+        console_obj.print()
+
+    actual_workspace_path: Optional[Path] = Path(workspace_path_str) if workspace_path_str else None
+    found_any_prompts_at_all = False
+    apps_no_support = []
+    apps_no_configs = []
+
+    title = "Global Prompts"
+    if actual_workspace_path:
+        title = f"Prompts for [green]{actual_workspace_path}[/green]"
+    console_obj.print(Panel.fit(title, style="bold"))
+    
+    for app_name_iter, app_class_iter in target_apps_to_display.items():
+        app_instance_iter = app_class_iter()
+        prompt_configs = app_instance_iter.get_prompts(workspace=actual_workspace_path)
+        
+        # Check if app supports prompts
+        if prompt_configs is None:
+            apps_no_support.append(app_instance_iter.name)
+            continue
+        
+        # Separate global and workspace prompts
+        global_prompts_list = []
+        workspace_prompts_list = []
+        
+        for config in prompt_configs:
+            if config.type == "global":
+                global_prompts_list.extend(config.prompts)
+            elif config.type == "workspace":
+                workspace_prompts_list.extend(config.prompts)
+
+        if not global_prompts_list and (not workspace_path_str or not workspace_prompts_list):
+            apps_no_configs.append(app_instance_iter.name)
+            continue
+
+        found_any_prompts_at_all = True
+        console_obj.print(f"\n  [bold underline]{app_instance_iter.name} Prompts:[/bold underline]")
+        
+        if global_prompts_list:
+            console_obj.print("    Global prompts:")
+            for prompt in global_prompts_list:
+                console_obj.print(f"    • {prompt.pattern} ({prompt.word_count} words, {prompt.line_count} lines)")
+        elif workspace_path_str:
+            console_obj.print("    No global prompts found.")
+        elif not workspace_path_str and not workspace_prompts_list:
+             console_obj.print("    No global prompts found.")
+
         if workspace_path_str:
-            console_obj.print(f"\n[yellow]Note: {apps_str} {conjunction} not have any rules configured for this workspace or globally.[/yellow]")
+            if workspace_prompts_list:
+                console_obj.print(f"    Workspace prompts for [green]{workspace_path_str}[/green]:")
+                for prompt in workspace_prompts_list:
+                    console_obj.print(f"    • {prompt.pattern} ({prompt.word_count} words, {prompt.line_count} lines)")
+            else:
+                console_obj.print(f"    No workspace prompts found in [green]{workspace_path_str}[/green].")
+        
+        console_obj.print()
+
+    if not found_any_prompts_at_all:
+        if actual_workspace_path:
+            if app_filter:
+                console_obj.print(f"\n[yellow]No prompts found for app '{app_filter}' in {actual_workspace_path} or globally.[/yellow]")
+            else:
+                console_obj.print(f"\n[yellow]No prompts found for any app in {actual_workspace_path} or globally.[/yellow]")
+        elif app_filter:
+            console_obj.print(f"\n[yellow]No prompts found for app '{app_filter}' globally.[/yellow]")
         else:
-            console_obj.print(f"\n[yellow]Note: {apps_str} {conjunction} not have any global rules configured.[/yellow]")
+            console_obj.print("\n[yellow]No global prompts found in any app.[/yellow]")
+    
+    # Show notes about apps without support or configs
+    if (apps_no_support or apps_no_configs) and found_any_prompts_at_all:
+        # Apps that don't support prompts
+        if apps_no_support:
+            conjunction = 'does' if len(apps_no_support) == 1 else 'do'
+            apps_str = ', '.join(apps_no_support)
+            console_obj.print(f"\n[dim]Note: {apps_str} {conjunction} not support prompt configurations.[/dim]")
+        
+        # Apps that support prompts but have none configured
+        if apps_no_configs:
+            conjunction = 'does' if len(apps_no_configs) == 1 else 'do'
+            apps_str = ', '.join(apps_no_configs)
+            if workspace_path_str:
+                console_obj.print(f"\n[yellow]Note: {apps_str} {conjunction} not have any prompts configured for this workspace or globally.[/yellow]")
+            else:
+                console_obj.print(f"\n[yellow]Note: {apps_str} {conjunction} not have any global prompts configured.[/yellow]")
 
 
 @click.group(invoke_without_command=True)
@@ -326,6 +477,8 @@ def view_workspace_info(workspace_path: str, app_filter: Optional[str]) -> None:
     _render_mcp_info(console, app_filter, details=True, for_workspace_path=workspace_path)
     console.print() 
     _render_rules_info(console, app_filter, workspace_path)
+    console.print()
+    _render_prompts_info(console, app_filter, workspace_path)
 
 
 @cli.command("list")
@@ -341,20 +494,36 @@ def list_apps() -> None:
     
     for app_name_key, app_class_type in APPS.items():
         app_instance_obj = app_class_type()
-        has_global = "Yes" if app_instance_obj.get_global_rules() else "No"
         
-        if app_instance_obj.name == "Claude Desktop":
-            has_workspace = "No"
-        else:
-            has_workspace = "Yes" 
+        # Check for global rules
+        rule_configs = app_instance_obj.get_rules(workspace=None)
+        has_global = "No"
+        if rule_configs is not None:
+            for config in rule_configs:
+                if config.type == "global" and config.rules:
+                    has_global = "Yes"
+                    break
+        
+        # Check if app supports workspace rules
+        dummy_workspace = Path(".")
+        workspace_rule_configs = app_instance_obj.get_rules(workspace=dummy_workspace)
+        has_workspace = "No" if workspace_rule_configs is None else "Yes"
 
-        has_mcps = "Yes" if app_instance_obj.get_mcps(None) else "No"
+        # Check for MCPs
+        mcp_configs = app_instance_obj.get_mcps(workspace=None)
+        has_mcps = "No"
+        if mcp_configs is not None:
+            for config in mcp_configs:
+                if config.servers:
+                    has_mcps = "Yes"
+                    break
         
         table.add_row(app_instance_obj.name, has_global, has_workspace, has_mcps)
     
     console.print(table)
     console.print("\nUse [yellow]'agapps mcps'[/yellow] to view MCP configurations.")
     console.print("Use [yellow]'agapps rules'[/yellow] to view global and workspace rules.")
+    console.print("Use [yellow]'agapps prompts'[/yellow] to view global and workspace prompts.")
     console.print("Use [yellow]'agapps view <path>'[/yellow] to view combined MCP and Rule info for a workspace.")
 
 
@@ -372,6 +541,14 @@ def mcps_command(app_filter: Optional[str] = None, details: bool = False) -> Non
 def rules_command(app_filter: Optional[str] = None, workspace_path: Optional[str] = None) -> None:
     """List rules from supported apps, optionally for a workspace."""
     _render_rules_info(console, app_filter, workspace_path)
+
+
+@cli.command("prompts")
+@click.option("--app", "app_filter", help="Filter prompts by specific app.")
+@click.argument("workspace_path", required=False, type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True))
+def prompts_command(app_filter: Optional[str] = None, workspace_path: Optional[str] = None) -> None:
+    """List prompts/custom commands from supported apps, optionally for a workspace."""
+    _render_prompts_info(console, app_filter, workspace_path)
 
 
 if __name__ == "__main__":

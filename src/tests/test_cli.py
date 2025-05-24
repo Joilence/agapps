@@ -5,7 +5,7 @@ from typing import List, Dict, Union, Type
 import sys # Add sys import
 import os # Add os import
 
-from agapps.schema import AgentApp, MCP, Rule
+from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, Prompt, PromptConfig
 from agapps.cli import cli, APPS as CLI_APPS # Import the CLI and its APPS dict
 
 # --- Mock AgentApp Implementations ---
@@ -14,52 +14,79 @@ class MockAppAllFeatures(AgentApp):
     def __init__(self):
         super().__init__(name="AllFeatures App")
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
-        return [MCP(name="test_mcp", command="do_something", envs={"KEY": "VALUE"})]
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
+        servers = [MCP(name="test_mcp", command="do_something", envs={"KEY": "VALUE"})]
+        return [MCPConfig(path=Path("~/.config/allfeatures/mcp.json"), type="global", servers=servers)]
 
-    def get_mcp_config_paths(self) -> List[Path]:
-        return [Path("~/.config/allfeatures/mcp.json")]
+    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
+        configs = []
+        # Global rules
+        configs.append(RuleConfig(
+            path=Path("~/.config/allfeatures/global.md"),
+            type="global",
+            rules=[Rule(pattern=Path("~/.config/allfeatures/global.md"))]
+        ))
+        # Workspace rules
+        if workspace:
+            configs.append(RuleConfig(
+                path=Path(workspace),
+                type="workspace",
+                rules=[Rule(pattern=Path(workspace) / ".allfeatures.md")]
+            ))
+        return configs
 
-    def get_global_rules(self) -> List[Rule]:
-        return [Rule(pattern=Path("~/.config/allfeatures/global.md"))]
-
-    def get_workspace_rules(self, workspace: Union[Path, str]) -> List[Rule]:
-        ws_path = Path(workspace)
-        rule_file = ws_path / "allfeatures.rules.md"
-        # To test print_rule_info reading file content, ensure the file is created in the test.
-        return [Rule(pattern=rule_file)]
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
+        return []
 
 class MockAppNoMCPs(AgentApp):
     def __init__(self):
         super().__init__(name="NoMCPs App")
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
-        return []
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
+        return None
 
-    def get_mcp_config_paths(self) -> List[Path]:
-        return []
+    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
+        configs = []
+        # Global rules
+        configs.append(RuleConfig(
+            path=Path("~/.config/nomcps/global.md"),
+            type="global",
+            rules=[Rule(pattern=Path("~/.config/nomcps/global.md"))]
+        ))
+        # Workspace rules
+        if workspace:
+            configs.append(RuleConfig(
+                path=Path(workspace),
+                type="workspace",
+                rules=[Rule(pattern=Path(workspace) / ".nomcps.md")]
+            ))
+        return configs
 
-    def get_global_rules(self) -> List[Rule]:
-        return [Rule(pattern=Path("~/.config/nomcps/global.md"))]
-
-    def get_workspace_rules(self, workspace: Union[Path, str]) -> List[Rule]:
-        return [Rule(pattern=Path(workspace) / "nomcps.rules.md")]
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
+        return None
 
 class MockAppNoGlobalRules(AgentApp):
     def __init__(self):
         super().__init__(name="NoGlobalRules App")
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
-        return [MCP(name="another_mcp", command="do_else")]
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
+        servers = [MCP(name="another_mcp", command="do_else")]
+        return [MCPConfig(path=Path("~/.config/noglobal/mcp.json"), type="global", servers=servers)]
 
-    def get_mcp_config_paths(self) -> List[Path]:
-        return [Path("~/.config/noglobal/mcp.json")]
+    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
+        configs = []
+        # No global rules
+        # Workspace rules
+        if workspace:
+            configs.append(RuleConfig(
+                path=Path(workspace),
+                type="workspace",
+                rules=[Rule(pattern=Path(workspace) / ".noglobal.md")]
+            ))
+        return configs
 
-    def get_global_rules(self) -> List[Rule]:
-        return []
-
-    def get_workspace_rules(self, workspace: Union[Path, str]) -> List[Rule]:
-        return [Rule(pattern=Path(workspace) / "noglobal.rules.md")]
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
+        return None
 
 class MockAppNoWorkspaceRules(AgentApp):
     def __init__(self):
@@ -67,33 +94,35 @@ class MockAppNoWorkspaceRules(AgentApp):
         # This app's get_workspace_rules returns [], so it effectively doesn't support them
         # which influences the 'list' command output.
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
-        return [MCP(name="ws_mcp", command="do_ws")]
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
+        servers = [MCP(name="ws_mcp", command="do_ws")]
+        return [MCPConfig(path=Path("~/.config/nows/mcp.json"), type="global", servers=servers)]
 
-    def get_mcp_config_paths(self) -> List[Path]:
-        return [Path("~/.config/nows/mcp.json")]
-    
-    def get_global_rules(self) -> List[Rule]:
-        return [Rule(pattern=Path("~/.config/nows/global.md"))]
+    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
+        configs = []
+        # Global rules only (no workspace rules)
+        configs.append(RuleConfig(
+            path=Path("~/.config/nows/global.md"),
+            type="global",
+            rules=[Rule(pattern=Path("~/.config/nows/global.md"))]
+        ))
+        return configs
 
-    def get_workspace_rules(self, workspace: Union[Path, str]) -> List[Rule]:
-        return [] # Explicitly no workspace rules
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
+        return None
 
 class MockAppNoFeatures(AgentApp):
     def __init__(self):
         super().__init__(name="NoFeatures App")
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
-        return []
-    
-    def get_mcp_config_paths(self) -> List[Path]:
-        return []
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
+        return None
 
-    def get_global_rules(self) -> List[Rule]:
-        return []
+    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
+        return None
 
-    def get_workspace_rules(self, workspace: Union[Path, str]) -> List[Rule]:
-        return []
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
+        return None
 
 MOCK_APPS_CONFIG: Dict[str, Type[AgentApp]] = {
     "all-features": MockAppAllFeatures,
