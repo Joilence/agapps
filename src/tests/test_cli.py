@@ -14,7 +14,7 @@ class MockAppAllFeatures(AgentApp):
     def __init__(self):
         super().__init__(name="AllFeatures App")
 
-    def get_mcps(self) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
         return [MCP(name="test_mcp", command="do_something", envs={"KEY": "VALUE"})]
 
     def get_mcp_config_paths(self) -> List[Path]:
@@ -33,7 +33,7 @@ class MockAppNoMCPs(AgentApp):
     def __init__(self):
         super().__init__(name="NoMCPs App")
 
-    def get_mcps(self) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
         return []
 
     def get_mcp_config_paths(self) -> List[Path]:
@@ -49,7 +49,7 @@ class MockAppNoGlobalRules(AgentApp):
     def __init__(self):
         super().__init__(name="NoGlobalRules App")
 
-    def get_mcps(self) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
         return [MCP(name="another_mcp", command="do_else")]
 
     def get_mcp_config_paths(self) -> List[Path]:
@@ -67,7 +67,7 @@ class MockAppNoWorkspaceRules(AgentApp):
         # This app's get_workspace_rules returns [], so it effectively doesn't support them
         # which influences the 'list' command output.
 
-    def get_mcps(self) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
         return [MCP(name="ws_mcp", command="do_ws")]
 
     def get_mcp_config_paths(self) -> List[Path]:
@@ -83,7 +83,7 @@ class MockAppNoFeatures(AgentApp):
     def __init__(self):
         super().__init__(name="NoFeatures App")
 
-    def get_mcps(self) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
         return []
     
     def get_mcp_config_paths(self) -> List[Path]:

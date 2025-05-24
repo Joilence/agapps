@@ -45,7 +45,7 @@ class ClaudeDesktop(AgentApp):
         except (json.JSONDecodeError, IOError):
             return {}
 
-    def get_mcps(self) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
         """
         Get MCP configurations from Claude desktop config.
 

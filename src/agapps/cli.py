@@ -162,8 +162,14 @@ def _render_mcp_info(
 
     for app_name_iter, app_class_iter in target_apps_to_display.items():
         app_instance_iter = app_class_iter()
-        mcps_list_iter = app_instance_iter.get_mcps()
+        mcps_list_iter = app_instance_iter.get_mcps(workspace=for_workspace_path)
         config_paths_iter = app_instance_iter.get_mcp_config_paths()
+        
+        # Also get workspace-specific MCP config paths if available
+        if for_workspace_path and hasattr(app_instance_iter, 'get_workspace_mcp_config_paths'):
+            workspace_config_paths = app_instance_iter.get_workspace_mcp_config_paths(for_workspace_path)
+            if workspace_config_paths:
+                config_paths_iter = list(config_paths_iter) + workspace_config_paths if config_paths_iter else workspace_config_paths
 
         if mcps_list_iter:
             any_mcps_found_for_any_target_app = True
@@ -342,7 +348,7 @@ def list_apps() -> None:
         else:
             has_workspace = "Yes" 
 
-        has_mcps = "Yes" if app_instance_obj.get_mcps() else "No"
+        has_mcps = "Yes" if app_instance_obj.get_mcps(None) else "No"
         
         table.add_row(app_instance_obj.name, has_global, has_workspace, has_mcps)
     

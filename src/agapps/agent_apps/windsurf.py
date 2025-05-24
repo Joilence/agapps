@@ -13,7 +13,7 @@ class Windsurf(AgentApp):
             Path.home() / ".codeium" / "windsurf" / "mcp_config.json",
         ]
 
-    def get_mcps(self) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
         """
         Get MCP configurations from Windsurf.
 

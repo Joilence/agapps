@@ -11,7 +11,7 @@ class Cursor(AgentApp):
         self.global_rules_path = Path.home() / ".cursor" / "global_rules.md"
         self.mcp_config_path = Path.home() / ".cursor" / "mcp.json"
 
-    def get_mcps(self) -> List[MCP]:
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
         """
         Get MCP configurations from Cursor.
 

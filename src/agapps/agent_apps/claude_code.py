@@ -9,84 +9,61 @@ from agapps.schema import AgentApp, MCP, Rule
 class ClaudeCode(AgentApp):
     def __init__(self):
         super().__init__(name="Claude Code")
-        self.config_paths = {
-            "darwin": Path.home()
-            / "Library"
-            / "Application Support"
-            / "Claude"
-            / "claude_desktop_config.json",
-            "windows": Path(os.environ.get("APPDATA", ""))
-            / "Claude"
-            / "claude_desktop_config.json",
-            "linux": Path.home() / ".config" / "Claude" / "claude_desktop_config.json",
-        }
-        # Settings and memory files
-        self.settings_path = Path.home() / ".claude" / "settings.json"  # Settings file, not rules
-        self.global_memory_path = Path.home() / ".claude" / "CLAUDE.md"  # Global memory/rules
+        self.global_memory_path = Path.home() / ".claude" / "CLAUDE.md"
 
-    def get_config_path(self) -> Path:
-        """Get the platform-specific path to the Claude config file."""
-        platform = os.uname().sysname.lower()
-        if "darwin" in platform:
-            return self.config_paths["darwin"]
-        elif "windows" in platform:
-            return self.config_paths["windows"]
-        elif "linux" in platform:
-            return self.config_paths["linux"]
-        else:
-            raise ValueError(f"Unsupported platform: {platform}")
-
-    def read_config(self) -> Dict:
-        """Read the Claude config file if it exists."""
-        config_path = self.get_config_path()
-        if not config_path.exists():
-            return {}
-
+    def get_mcps(self, workspace: Union[Path, str, None] = None) -> List[MCP]:
+        """
+        Get MCP configurations for Claude Code from .mcp.json files.
+        """
+        if not workspace:
+            return []
+            
+        if isinstance(workspace, str):
+            workspace = Path(workspace)
+            
+        mcp_json_path = workspace / ".mcp.json"
+        if not mcp_json_path.exists():
+            return []
+            
         try:
-            with open(config_path, "r") as f:
-                return json.load(f)
+            with open(mcp_json_path, "r") as f:
+                config = json.load(f)
         except (json.JSONDecodeError, IOError):
-            return {}
-
-    def get_mcps(self) -> List[MCP]:
-        """
-        Get MCP configurations from Claude desktop config.
-
-        The config file has a "mcpServers" key with an array of server specifications.
-        Each spec includes name, command, args, env, cwd, etc.
-        """
-        config = self.read_config()
-        mcp_servers = config.get("mcpServers", {})
+            return []
+            
         result = []
-
+        mcp_servers = config.get("mcpServers", {})
+        
         for server_name, server_details in mcp_servers.items():
             if not isinstance(server_details, dict):
                 continue
-
-            name = server_name
+                
             command_executable = server_details.get("command", "")
             args = server_details.get("args", [])
             env_vars = server_details.get("env", {})
-
+            
             full_command = command_executable
-            # Ensure args is a list and not empty; also handle if args is a single string
             if isinstance(args, list) and args:
                 full_command = f"{command_executable} {' '.join(args)}".strip()
-            elif isinstance(args, str) and args: # Handle case where args might be a single string
-                 full_command = f"{command_executable} {args}".strip()
-
-            if command_executable:  # Only add if there's a base command executable
-                result.append(MCP(name=name, command=full_command, envs=env_vars))
+            elif isinstance(args, str) and args:
+                full_command = f"{command_executable} {args}".strip()
+                
+            if command_executable:
+                result.append(MCP(name=server_name, command=full_command, envs=env_vars))
+                
         return result
 
     def get_mcp_config_paths(self) -> List[Path]:
-        """Get the path to the Claude desktop config file if MCPs are present."""
-        config_path = self.get_config_path()
-        if config_path.exists():
-            config = self.read_config()
-            if config.get("mcpServers"):
-                return [config_path]
+        """Get MCP configuration paths for Claude Code."""
         return []
+
+    def get_workspace_mcp_config_paths(self, workspace: Union[Path, str]) -> List[Path]:
+        """Get workspace-specific MCP configuration files (.mcp.json)."""
+        if isinstance(workspace, str):
+            workspace = Path(workspace)
+
+        mcp_json_path = workspace / ".mcp.json"
+        return [mcp_json_path] if mcp_json_path.exists() else []
 
     def get_global_rules(self) -> List[Rule]:
         """
@@ -94,14 +71,34 @@ class ClaudeCode(AgentApp):
 
         Global memory is defined in:
         - ~/.claude/CLAUDE.md (User memory - personal preferences for all projects)
+        """
+        if self.global_memory_path.exists():
+            return [Rule(pattern=self.global_memory_path)]
+        return []
 
-        Note: ~/.claude/settings.json is a settings file, not a rules file
+    def get_prompts(self, workspace: Union[Path, str, None] = None) -> List[Rule]:
+        """
+        Get custom slash commands for Claude Code.
+
+        Custom commands are defined in:
+        - ~/.claude/commands/*.md (global commands available in all projects)
+        - .claude/commands/*.md (project-specific commands)
         """
         rules = []
 
-        # Check for global memory file (User memory)
-        if self.global_memory_path.exists():
-            rules.append(Rule(pattern=self.global_memory_path))
+        # Global commands
+        global_commands_dir = Path.home() / ".claude" / "commands"
+        if global_commands_dir.exists():
+            rules.extend(Rule(pattern=f) for f in global_commands_dir.glob("*.md"))
+
+        # Project-specific commands
+        if workspace:
+            if isinstance(workspace, str):
+                workspace = Path(workspace)
+
+            project_commands_dir = workspace / ".claude" / "commands"
+            if project_commands_dir.exists():
+                rules.extend(Rule(pattern=f) for f in project_commands_dir.glob("*.md"))
 
         return rules
 
@@ -110,25 +107,25 @@ class ClaudeCode(AgentApp):
         Get workspace-level rules for Claude Code.
 
         Workspace rules/memory can be defined in:
-        - **/CLAUDE.md (Project memory - team-shared instructions, searched recursively)
-        - **/CLAUDE.local.md (Project memory local - personal project-specific preferences, searched recursively)
-
-        Settings files (not rules):
-        - .claude/settings.json (shared settings)
-        - .claude/settings.local.json (local project settings)
+        - CLAUDE.md and CLAUDE.local.md files in the workspace directory and parent directories
+        - CLAUDE.md and CLAUDE.local.md files in child directories (searched recursively)
         """
         rules = []
 
-        # Convert workspace to Path if it's a string
         if isinstance(workspace, str):
             workspace = Path(workspace)
 
-        # Check for Project memory (team-shared instructions) recursively
-        for claude_md_path in workspace.glob("**/CLAUDE.md"):
-            rules.append(Rule(pattern=claude_md_path))
+        # Search parent directories
+        current_dir = workspace.resolve().parent
+        while current_dir != current_dir.parent:
+            for filename in ["CLAUDE.md", "CLAUDE.local.md"]:
+                file_path = current_dir / filename
+                if file_path.exists():
+                    rules.append(Rule(pattern=file_path))
+            current_dir = current_dir.parent
 
-        # Check for Project memory local (personal project-specific preferences, deprecated) recursively
-        for claude_local_md_path in workspace.glob("**/CLAUDE.local.md"):
-            rules.append(Rule(pattern=claude_local_md_path))
+        # Search current directory and all subdirectories
+        for pattern in ["**/CLAUDE.md", "**/CLAUDE.local.md"]:
+            rules.extend(Rule(pattern=p) for p in workspace.glob(pattern))
 
         return rules
