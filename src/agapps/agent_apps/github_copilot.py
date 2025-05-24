@@ -14,6 +14,11 @@ class GitHubCopilot(AgentApp):
             "windows": Path(os.environ.get("APPDATA", "")) / "Code" / "User" / "settings.json",
             "linux": Path.home() / ".config" / "Code" / "User" / "settings.json",
         }
+        self.jetbrains_mcp_paths = {
+            "darwin": Path.home() / ".config" / "github-copilot" / "intellij" / "mcp.json",
+            "windows": Path.home() / ".config" / "github-copilot" / "intellij" / "mcp.json",
+            "linux": Path.home() / ".config" / "github-copilot" / "intellij" / "mcp.json",
+        }
 
     def get_vscode_settings_path(self) -> Path:
         """Get the platform-specific path to VS Code user settings."""
@@ -27,6 +32,19 @@ class GitHubCopilot(AgentApp):
         else:
             # Default to Linux path
             return self.vscode_settings_paths["linux"]
+
+    def get_jetbrains_mcp_path(self) -> Path:
+        """Get the platform-specific path to JetBrains IDE MCP configuration."""
+        platform = os.uname().sysname.lower()
+        if "darwin" in platform:
+            return self.jetbrains_mcp_paths["darwin"]
+        elif "windows" in platform:
+            return self.jetbrains_mcp_paths["windows"]
+        elif "linux" in platform:
+            return self.jetbrains_mcp_paths["linux"]
+        else:
+            # Default to Linux path
+            return self.jetbrains_mcp_paths["linux"]
 
     def read_vscode_settings(self) -> Dict:
         """Read VS Code settings file."""
@@ -44,42 +62,83 @@ class GitHubCopilot(AgentApp):
         """
         Get MCP configurations for GitHub Copilot.
         
-        GitHub Copilot Chat supports MCP servers when enabled in VS Code settings.
+        GitHub Copilot Chat supports MCP servers when enabled in VS Code settings
+        and also in JetBrains IDEs.
         """
         configs = []
+        
+        # Check VS Code settings
         settings = self.read_vscode_settings()
         
-        # Check if MCP discovery is enabled
-        if not settings.get("chat.mcp.discovery.enabled", False):
-            return configs
-        
-        # Check for configured MCP servers
-        mcp_servers = settings.get("chat.mcp.servers", {})
-        servers = []
-        
-        for server_name, server_details in mcp_servers.items():
-            if not isinstance(server_details, dict):
-                continue
+        # Check if MCP discovery is enabled in VS Code
+        if settings.get("chat.mcp.discovery.enabled", False):
+            # Check for configured MCP servers in VS Code
+            mcp_servers = settings.get("chat.mcp.servers", {})
+            servers = []
             
-            command = server_details.get("command", "")
-            args = server_details.get("args", [])
-            env_vars = server_details.get("env", {})
+            for server_name, server_details in mcp_servers.items():
+                if not isinstance(server_details, dict):
+                    continue
+                
+                command = server_details.get("command", "")
+                args = server_details.get("args", [])
+                env_vars = server_details.get("env", {})
+                
+                full_command = command
+                if isinstance(args, list) and args:
+                    full_command = f"{command} {' '.join(args)}".strip()
+                elif isinstance(args, str) and args:
+                    full_command = f"{command} {args}".strip()
+                
+                if command:
+                    servers.append(MCP(name=server_name, command=full_command, envs=env_vars))
             
-            full_command = command
-            if isinstance(args, list) and args:
-                full_command = f"{command} {' '.join(args)}".strip()
-            elif isinstance(args, str) and args:
-                full_command = f"{command} {args}".strip()
-            
-            if command:
-                servers.append(MCP(name=server_name, command=full_command, envs=env_vars))
+            if servers:
+                configs.append(MCPConfig(
+                    path=self.get_vscode_settings_path(),
+                    type="global",
+                    servers=servers
+                ))
         
-        if servers:
-            configs.append(MCPConfig(
-                path=self.get_vscode_settings_path(),
-                type="global",
-                servers=servers
-            ))
+        # Check JetBrains IDE MCP configuration
+        jetbrains_mcp_path = self.get_jetbrains_mcp_path()
+        if jetbrains_mcp_path.exists():
+            try:
+                with open(jetbrains_mcp_path, "r") as f:
+                    jetbrains_config = json.load(f)
+                    
+                jetbrains_servers = []
+                mcp_servers = jetbrains_config.get("servers", {})
+                
+                for server_name, server_details in mcp_servers.items():
+                    if not isinstance(server_details, dict):
+                        continue
+                    
+                    # JetBrains format has "type": "stdio" field
+                    if server_details.get("type") != "stdio":
+                        continue
+                    
+                    command = server_details.get("command", "")
+                    args = server_details.get("args", [])
+                    env_vars = server_details.get("env", {})
+                    
+                    full_command = command
+                    if isinstance(args, list) and args:
+                        full_command = f"{command} {' '.join(args)}".strip()
+                    elif isinstance(args, str) and args:
+                        full_command = f"{command} {args}".strip()
+                    
+                    if command:
+                        jetbrains_servers.append(MCP(name=server_name, command=full_command, envs=env_vars))
+                
+                if jetbrains_servers:
+                    configs.append(MCPConfig(
+                        path=jetbrains_mcp_path,
+                        type="global",
+                        servers=jetbrains_servers
+                    ))
+            except (json.JSONDecodeError, IOError):
+                pass
         
         return configs
 
