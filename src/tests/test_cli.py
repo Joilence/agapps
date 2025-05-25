@@ -44,7 +44,7 @@ class MockAppAllFeatures(AgentApp):
                 RuleConfig(
                     path=Path(workspace),
                     type="workspace",
-                    rules=[Rule(pattern=Path(workspace) / ".allfeatures.md")],
+                    rules=[Rule(pattern=Path(workspace) / "allfeatures.rules.md")],
                 )
             )
         return configs
@@ -82,7 +82,7 @@ class MockAppNoMCPs(AgentApp):
                 RuleConfig(
                     path=Path(workspace),
                     type="workspace",
-                    rules=[Rule(pattern=Path(workspace) / ".nomcps.md")],
+                    rules=[Rule(pattern=Path(workspace) / "nomcps.rules.md")],
                 )
             )
         return configs
@@ -118,7 +118,7 @@ class MockAppNoGlobalRules(AgentApp):
                 RuleConfig(
                     path=Path(workspace),
                     type="workspace",
-                    rules=[Rule(pattern=Path(workspace) / ".noglobal.md")],
+                    rules=[Rule(pattern=Path(workspace) / "noglobal.rules.md")],
                 )
             )
         return configs
@@ -323,7 +323,7 @@ def test_agapps_view_workspace_path_valid_app_filter(runner: CliRunner, tmp_path
     )  # Main title should still be there
     assert Path(tmp_path).name in result.output  # Check for directory name
     assert "Detailed MCP Information" not in result.output
-    assert "No MCP configurations found for" in result.output
+    assert "no-mcps does not support MCP configurations" in result.output
     assert "no-mcps" in result.output
     assert "in" in result.output
     assert Path(tmp_path).name in result.output
@@ -422,7 +422,7 @@ def test_agapps_mcps_filter_no_mcps_app(runner: CliRunner):
     """Test `agapps mcps --app <APP_NAME>` for an app with no MCPs."""
     result = runner.invoke(cli, ["mcps", "--app", "no-mcps"])
     assert result.exit_code == 0
-    assert "No MCP configurations found for app 'no-mcps'" in result.output
+    assert "no-mcps does not support MCP configurations" in result.output
     assert (
         "Detailed MCP Information" not in result.output
     )  # If no summary, no details either
@@ -445,9 +445,10 @@ def test_agapps_rules_global_only(runner: CliRunner):
     assert "Global Rules" in result.output  # Panel title
     assert "AllFeatures App Rules:" in result.output
     assert "~/.config/allfeatures/global.md" in result.output
-    # Check for the note about apps with no global rules
+    # Check for the notes about apps with no global rules
+    assert "Note: NoFeatures App does not support rule configurations." in result.output
     assert (
-        "Note: NoGlobalRules App, NoFeatures App do not have any global rules configured."
+        "Note: NoGlobalRules App does not have any global rules configured."
         in result.output
     )
     assert (
