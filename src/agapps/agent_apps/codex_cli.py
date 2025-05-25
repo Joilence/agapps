@@ -1,10 +1,9 @@
-import os
 import json
 import yaml
 from pathlib import Path
 from typing import List, Union, Dict
 
-from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, Prompt, PromptConfig
+from agapps.schema import AgentApp, MCPConfig, Rule, RuleConfig, PromptConfig
 
 
 class CodexCli(AgentApp):
@@ -30,7 +29,9 @@ class CodexCli(AgentApp):
                     pass
         return {}
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
+    def get_mcps(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[MCPConfig], None]:
         """
         Get MCP configurations from Codex CLI.
 
@@ -38,7 +39,9 @@ class CodexCli(AgentApp):
         """
         return None
 
-    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
+    def get_rules(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[RuleConfig], None]:
         """
         Get rule configurations for Codex CLI.
 
@@ -46,23 +49,27 @@ class CodexCli(AgentApp):
         - Global: ~/.codex/AGENTS.md
         """
         configs = []
-        
+
         # Global rules
         if self.instructions_path.exists():
-            configs.append(RuleConfig(
-                path=self.instructions_path,
-                type="global",
-                rules=[Rule(pattern=self.instructions_path)]
-            ))
-        
+            configs.append(
+                RuleConfig(
+                    path=self.instructions_path,
+                    type="global",
+                    rules=[Rule(pattern=self.instructions_path)],
+                )
+            )
+
         # Codex CLI doesn't support workspace-specific rules
-        
+
         return configs
 
-    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
+    def get_prompts(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[PromptConfig], None]:
         """
         Get prompt configurations for Codex CLI.
-        
+
         Codex CLI doesn't have a built-in prompt/command system.
         """
         return None

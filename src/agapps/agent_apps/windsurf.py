@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
-from typing import List, Union, Dict
+from typing import List, Union
 
-from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, Prompt, PromptConfig
+from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, PromptConfig
 
 
 class Windsurf(AgentApp):
@@ -13,7 +13,9 @@ class Windsurf(AgentApp):
             Path.home() / ".codeium" / "windsurf" / "mcp_config.json",
         ]
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
+    def get_mcps(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[MCPConfig], None]:
         """
         Get MCP configurations from Windsurf.
 
@@ -40,22 +42,34 @@ class Windsurf(AgentApp):
 
                         full_command = command_executable
                         if isinstance(args, list) and args:
-                            full_command = f"{command_executable} {' '.join(args)}".strip()
+                            full_command = (
+                                f"{command_executable} {' '.join(args)}".strip()
+                            )
                         elif isinstance(args, str) and args:
                             full_command = f"{command_executable} {args}".strip()
 
                         if command_executable:
-                            servers.append(MCP(name=server_name, command=full_command, envs=env_vars))
+                            servers.append(
+                                MCP(
+                                    name=server_name,
+                                    command=full_command,
+                                    envs=env_vars,
+                                )
+                            )
 
                     if servers:
-                        configs.append(MCPConfig(path=config_path, type="global", servers=servers))
+                        configs.append(
+                            MCPConfig(path=config_path, type="global", servers=servers)
+                        )
 
                 except (json.JSONDecodeError, IOError):
                     pass
 
         return configs
 
-    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
+    def get_rules(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[RuleConfig], None]:
         """
         Get rule configurations for Windsurf.
 
@@ -67,11 +81,13 @@ class Windsurf(AgentApp):
 
         # Global rules
         if self.codeium_memories_path.exists():
-            configs.append(RuleConfig(
-                path=self.codeium_memories_path,
-                type="global",
-                rules=[Rule(pattern=self.codeium_memories_path)]
-            ))
+            configs.append(
+                RuleConfig(
+                    path=self.codeium_memories_path,
+                    type="global",
+                    rules=[Rule(pattern=self.codeium_memories_path)],
+                )
+            )
 
         # Workspace rules
         if workspace:
@@ -80,18 +96,22 @@ class Windsurf(AgentApp):
 
             memories_path = workspace / ".windsurf" / "memories"
             if memories_path.exists():
-                configs.append(RuleConfig(
-                    path=memories_path,
-                    type="workspace",
-                    rules=[Rule(pattern=memories_path)]
-                ))
+                configs.append(
+                    RuleConfig(
+                        path=memories_path,
+                        type="workspace",
+                        rules=[Rule(pattern=memories_path)],
+                    )
+                )
 
         return configs
 
-    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
+    def get_prompts(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[PromptConfig], None]:
         """
         Get prompt configurations for Windsurf.
-        
+
         Windsurf doesn't have a built-in prompt/command system.
         """
         return None

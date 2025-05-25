@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import List, Union, Dict
 
-from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, Prompt, PromptConfig
+from agapps.schema import AgentApp, MCP, MCPConfig, RuleConfig, PromptConfig
 
 
 class ClaudeDesktop(AgentApp):
@@ -45,7 +45,9 @@ class ClaudeDesktop(AgentApp):
         except (json.JSONDecodeError, IOError):
             return {}
 
-    def get_mcps(self, workspace: Union[Path, str, None] = None) -> Union[List[MCPConfig], None]:
+    def get_mcps(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[MCPConfig], None]:
         """
         Get MCP configurations from Claude desktop config.
 
@@ -54,7 +56,7 @@ class ClaudeDesktop(AgentApp):
         """
         configs = []
         config_path = self.get_config_path()
-        
+
         if config_path.exists():
             config = self.read_config()
             mcp_servers = config.get("mcpServers", {})
@@ -75,25 +77,33 @@ class ClaudeDesktop(AgentApp):
                     full_command = f"{command_executable} {args}".strip()
 
                 if command_executable:
-                    servers.append(MCP(name=server_name, command=full_command, envs=env_vars))
-            
+                    servers.append(
+                        MCP(name=server_name, command=full_command, envs=env_vars)
+                    )
+
             if servers:
-                configs.append(MCPConfig(path=config_path, type="global", servers=servers))
-        
+                configs.append(
+                    MCPConfig(path=config_path, type="global", servers=servers)
+                )
+
         return configs
 
-    def get_rules(self, workspace: Union[Path, str, None] = None) -> Union[List[RuleConfig], None]:
+    def get_rules(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[RuleConfig], None]:
         """
         Get rule configurations for Claude Desktop.
-        
+
         Claude Desktop doesn't have built-in rule files like other agent apps.
         """
         return None
 
-    def get_prompts(self, workspace: Union[Path, str, None] = None) -> Union[List[PromptConfig], None]:
+    def get_prompts(
+        self, workspace: Union[Path, str, None] = None
+    ) -> Union[List[PromptConfig], None]:
         """
         Get prompt configurations for Claude Desktop.
-        
+
         Claude Desktop doesn't have custom prompt/command files.
         """
         return None
