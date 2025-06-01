@@ -618,14 +618,16 @@ def list_apps() -> None:
         workspace_rule_configs = app_instance_obj.get_rules(workspace=dummy_workspace)
         has_workspace = "No" if workspace_rule_configs is None else "Yes"
 
-        # Check for MCPs
-        mcp_configs = app_instance_obj.get_mcps(workspace=None)
+        # Check for MCP support (capability, not current state)
         has_mcps = "No"
-        if mcp_configs is not None:
-            for config in mcp_configs:
-                if config.servers:
-                    has_mcps = "Yes"
-                    break
+
+        # Check if app supports MCPs (returns list) vs doesn't support (returns None)
+        global_mcp_configs = app_instance_obj.get_mcps(workspace=None)
+        workspace_mcp_configs = app_instance_obj.get_mcps(workspace=dummy_workspace)
+
+        # If either global or workspace returns a list (even empty), app supports MCP
+        if global_mcp_configs is not None or workspace_mcp_configs is not None:
+            has_mcps = "Yes"
 
         table.add_row(app_instance_obj.name, has_global, has_workspace, has_mcps)
 
