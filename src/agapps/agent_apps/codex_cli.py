@@ -7,6 +7,8 @@ from agapps.schema import AgentApp, MCPConfig, Rule, RuleConfig, PromptConfig
 
 
 class CodexCli(AgentApp):
+    supports_global_rules = True
+
     def __init__(self):
         super().__init__(name="OpenAI Codex CLI")
         self.config_paths = [

@@ -7,6 +7,8 @@ from agapps.schema import AgentApp, MCP, MCPConfig, RuleConfig, PromptConfig
 
 
 class ClaudeDesktop(AgentApp):
+    supports_global_mcps = True
+
     def __init__(self):
         super().__init__(name="Claude Desktop")
         self.config_paths = {

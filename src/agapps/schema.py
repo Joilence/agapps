@@ -66,6 +66,14 @@ class PromptConfig(BaseModel):
 
 
 class AgentApp(ABC):
+    # Override these in subclasses that support the functionality
+    supports_global_mcps = False
+    supports_workspace_mcps = False
+    supports_global_rules = False
+    supports_workspace_rules = False
+    supports_global_prompts = False
+    supports_workspace_prompts = False
+
     def __init__(self, name: str):
         self.name = name
 

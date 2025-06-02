@@ -14,6 +14,12 @@ from agapps.schema import (
 
 
 class ClaudeCode(AgentApp):
+    supports_global_rules = True
+    supports_workspace_rules = True
+    supports_workspace_mcps = True
+    supports_global_prompts = True
+    supports_workspace_prompts = True
+
     def __init__(self):
         super().__init__(name="Claude Code")
         self.global_memory_path = Path.home() / ".claude" / "CLAUDE.md"

@@ -6,6 +6,10 @@ from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, PromptConf
 
 
 class Windsurf(AgentApp):
+    supports_global_mcps = True
+    supports_global_rules = True
+    supports_workspace_rules = True
+
     def __init__(self):
         super().__init__(name="Windsurf")
         self.codeium_memories_path = Path.home() / ".codeium" / "windsurf" / "memories"

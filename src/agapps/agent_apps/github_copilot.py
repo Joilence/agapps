@@ -7,6 +7,9 @@ from agapps.schema import AgentApp, MCP, MCPConfig, Rule, RuleConfig, PromptConf
 
 
 class GitHubCopilot(AgentApp):
+    supports_global_mcps = True
+    supports_workspace_rules = True
+
     def __init__(self):
         super().__init__(name="GitHub Copilot")
         self.vscode_settings_paths = {
