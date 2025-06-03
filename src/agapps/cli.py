@@ -14,6 +14,7 @@ from agapps.agent_apps.codex_cli import CodexCli
 from agapps.agent_apps.cursor import Cursor
 from agapps.agent_apps.github_copilot import GitHubCopilot
 from agapps.agent_apps.windsurf import Windsurf
+from agapps.agent_apps.zed import Zed
 from agapps.schema import Rule, AgentApp
 
 # Map of app names to their classes
@@ -24,6 +25,7 @@ APPS: Dict[str, Type[AgentApp]] = {
     "cursor": Cursor,
     "github-copilot": GitHubCopilot,
     "windsurf": Windsurf,
+    "zed": Zed,
 }
 
 # Initialize Rich console

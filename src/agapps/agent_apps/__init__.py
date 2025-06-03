@@ -4,6 +4,7 @@ from agapps.agent_apps.codex_cli import CodexCli
 from agapps.agent_apps.cursor import Cursor
 from agapps.agent_apps.github_copilot import GitHubCopilot
 from agapps.agent_apps.windsurf import Windsurf
+from agapps.agent_apps.zed import Zed
 
 __all__ = [
     "ClaudeCode",
@@ -12,4 +13,5 @@ __all__ = [
     "Cursor",
     "GitHubCopilot",
     "Windsurf",
+    "Zed",
 ]
