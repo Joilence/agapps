@@ -5,7 +5,6 @@ import os
 import re
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
 from rich.text import Text
 
 from agapps.agent_apps.claude_code import ClaudeCode
@@ -120,7 +119,7 @@ def _display_mcp_summary_table(
 
     all_mcp_names_summary = sorted(list(all_mcp_names_summary))
     panel_title = title_override if title_override else "MCP Configurations"
-    console_obj.print(Panel.fit(panel_title, style="bold"))
+    console_obj.print(f"\n[bold cyan]# {panel_title}[/bold cyan]")
 
     chunk_size = 4
     for i in range(0, len(all_mcp_names_summary), chunk_size):
@@ -248,7 +247,7 @@ def _render_mcp_info(
         )
 
     if details:
-        console_obj.print(Panel.fit("Detailed MCP Information", style="bold"))
+        console_obj.print("\n[bold cyan]## Detailed MCP Information[/bold cyan]")
         any_details_shown = False
         for app_name_detail, app_class_detail in target_apps_to_display.items():
             app_instance_detail = app_class_detail()
@@ -323,8 +322,6 @@ def _render_rules_info(
             )
             return
         target_apps_to_display = {app_filter: APPS[app_filter]}
-        console_obj.print(f"[dim]Filtered by App: {app_filter}[/dim]")
-        console_obj.print()
 
     actual_workspace_path: Optional[Path] = (
         Path(workspace_path_str) if workspace_path_str else None
@@ -336,7 +333,7 @@ def _render_rules_info(
     title = "Global Rules"
     if actual_workspace_path:
         title = f"Rules for [green]{actual_workspace_path}[/green]"
-    console_obj.print(Panel.fit(title, style="bold"))
+    console_obj.print(f"\n[bold cyan]## {title}[/bold cyan]")
 
     for app_name_iter, app_class_iter in target_apps_to_display.items():
         app_instance_iter = app_class_iter()
@@ -444,8 +441,6 @@ def _render_prompts_info(
             )
             return
         target_apps_to_display = {app_filter: APPS[app_filter]}
-        console_obj.print(f"[dim]Filtered by App: {app_filter}[/dim]")
-        console_obj.print()
 
     actual_workspace_path: Optional[Path] = (
         Path(workspace_path_str) if workspace_path_str else None
@@ -457,7 +452,7 @@ def _render_prompts_info(
     title = "Global Prompts"
     if actual_workspace_path:
         title = f"Prompts for [green]{actual_workspace_path}[/green]"
-    console_obj.print(Panel.fit(title, style="bold"))
+    console_obj.print(f"\n[bold cyan]## {title}[/bold cyan]")
 
     for app_name_iter, app_class_iter in target_apps_to_display.items():
         app_instance_iter = app_class_iter()
@@ -576,9 +571,7 @@ def cli(ctx: click.Context) -> None:
 def view_workspace_info(workspace_path: str, app_filter: Optional[str]) -> None:
     """Display MCP and Rule information for a WORKSPACE_PATH."""
     console.print(
-        Panel.fit(
-            f"Information for Workspace: [green]{workspace_path}[/green]", style="bold"
-        )
+        f"\n[bold cyan]# Information for Workspace: [green]{workspace_path}[/green][/bold cyan]"
     )
     if app_filter:
         console.print(f"Filtered by App: [blue]{app_filter}[/blue]")
@@ -595,7 +588,7 @@ def view_workspace_info(workspace_path: str, app_filter: Optional[str]) -> None:
 @cli.command("list")
 def list_apps() -> None:
     """List all installed agent apps and their general capabilities."""
-    console.print(Panel.fit("Installed Agent Apps", style="bold"))
+    console.print("\n[bold cyan]# Installed Agent Apps[/bold cyan]")
 
     table = Table(show_header=True)
     table.add_column("App")
