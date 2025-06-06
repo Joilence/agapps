@@ -6,7 +6,7 @@ A command-line tool for viewing (in the future perhaps managing) AI agent app co
 
 ```bash
 # Install with uv (wip for pypi)
-uv tool install --from https://github.com/Joilence/agapps.git
+uv tool install https://github.com/Joilence/agapps.git
 
 # Run the tool
 agapps --help
